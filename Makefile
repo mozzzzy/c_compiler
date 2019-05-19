@@ -7,3 +7,5 @@ test: build
 clean:
 	cd $(PWD)/src && make clean
 	cd $(PWD)/tests && make clean
+
+remake: clean build

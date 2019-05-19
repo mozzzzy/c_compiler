@@ -1,3 +1,5 @@
+CFLAGS = -g
+
 9cc: 9cc.c
 
 clean:
