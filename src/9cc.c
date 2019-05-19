@@ -27,8 +27,6 @@ typedef struct {
 char *USAGE = "Usage:\n"
               "  %s CODE\n";
 
-char *user_input;
-
 // tokenized results (= token)
 // NOTE: we can't tokenize the program which has more than 100 tokens.
 Token tokens[100];
@@ -47,16 +45,17 @@ void error (char *fmt, ...) {
 }
 
 // print error point
-void error_at (char *loc, char *msg) {
+void error_at (char *user_input, char *loc, char *msg) {
   int pos = loc - user_input;
   fprintf(stderr, "%s\n", user_input);
-  fprintf(stderr, "%s\n", pos, "");   // print spaces pos times
+  // print spaces pos times
+  fprintf(stderr, "%*s", pos, "");
   fprintf(stderr, "^ %s\n", msg);
   exit(1);
 }
 
 // tokenize user input and put each token to the array
-void tokenize () {
+void tokenize (char *user_input) {
   char *p = user_input;
 
   // index of the array
@@ -88,7 +87,7 @@ void tokenize () {
       continue;
     }
 
-    error_at(p, "can not tokenize.");
+    error_at(user_input, p, "can not tokenize.");
   }
   tokens[i].ty = TK_EOF;
   tokens[i].input = p;
@@ -101,9 +100,10 @@ int main (int argc, char **argv) {
     return 1;
   }
 
+  // source code
+  char *user_input = argv[1];
   // tokenize
-  user_input = argv[1];
-  tokenize();
+  tokenize(user_input);
 
   // command to specify the syntax of assembly
   printf(".intel_syntax noprefix\n");
@@ -114,7 +114,7 @@ int main (int argc, char **argv) {
 
   // the first character of input program should be an integer
   if (tokens[0].ty != TK_NUM) {
-    error_at(tokens[0].input, "first token is not a number");
+    error_at(user_input, tokens[0].input, "first token is not a number");
   }
 
   // move the first integer that is specified in argv[1] to rax.
@@ -128,7 +128,7 @@ int main (int argc, char **argv) {
     if (tokens[i].ty == '+') {
       ++i;
       if (tokens[i].ty != TK_NUM) {
-        error_at(tokens[i].input, "token after '+' should be a number");
+        error_at(user_input, tokens[i].input, "token after '+' should be a number");
       }
       // adds the integer to the right of '+' to rax.
       printf("  add rax, %d\n", tokens[i].val);
@@ -139,7 +139,7 @@ int main (int argc, char **argv) {
     if (tokens[i].ty == '-') {
       ++i;
       if (tokens[i].ty != TK_NUM) {
-        error_at(tokens[i].input, "token after '-' should be a number");
+        error_at(user_input, tokens[i].input, "token after '-' should be a number");
       }
       // substracts the integer to the right of '+' from rax.
       printf("  sub rax, %ld\n", tokens[i].val);
@@ -147,7 +147,7 @@ int main (int argc, char **argv) {
       continue;
     }
 
-    error_at(tokens[i].input, "unexpected token");
+    error_at(user_input, tokens[i].input, "unexpected token");
   }
 
   // return
