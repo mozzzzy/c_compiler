@@ -4,9 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-char *USAGE = "Usage:\n"
-              "  %s CODE\n";
-
 /**
  * data tipes
  */
@@ -23,15 +20,19 @@ typedef struct {
   char *input;  // token string (for error messaging)
 } Token;
 
+
 /**
  * variables
  */
-// source code
+char *USAGE = "Usage:\n"
+              "  %s CODE\n";
+
 char *user_input;
 
 // tokenized results (= token)
 // NOTE: we can't tokenize the program which has more than 100 tokens.
 Token tokens[100];
+
 
 /**
  * functions
