@@ -13,12 +13,26 @@ enum {
   TK_EOF,         // end of input token
 };
 
+// number to specify the type of node
+enum {
+  ND_NUM = 256,   // node type of integer
+};
+
 // type of a token
 typedef struct {
   int ty;       // type of token
   int val;      // if ty == TK_NUM, val is token's value
   char *input;  // token string (for error messaging)
 } Token;
+
+// type of a node of syntax tree
+typedef struct Node {
+  int ty;
+  struct Node *lhs;   // left-hand side
+  struct Node *rhs;   // right-hand side
+  int val;            // the value of token.
+                      // NOTE: this variable is used only if ty == ND_NUM
+} Node;
 
 
 /**
@@ -31,6 +45,7 @@ char *USAGE = "Usage:\n"
 // NOTE: we can't tokenize the program which has more than 100 tokens.
 Token tokens[100];
 
+int pos = 0;
 
 /**
  * functions
@@ -68,7 +83,8 @@ void tokenize (char *user_input) {
     }
 
     // tokenize + and -
-    if (*p == '+' || *p == '-') {
+    if (*p == '+' || *p == '-' || *p == '*' || *p == '/'
+        || *p == '(' || *p == ')') {
       tokens[i].ty = *p;
       tokens[i].input = p;
       ++i;
@@ -93,6 +109,138 @@ void tokenize (char *user_input) {
   tokens[i].input = p;
 }
 
+// check token type, and if token is the same with the variable,
+// increment pos (it is a global variable) and return true, otherwise return false
+int consume (int ty) {
+  if (tokens[pos].ty != ty) {
+    return 0;
+  }
+  ++pos;
+  return 1;
+}
+
+// create a node of binary operator
+Node *new_node (int ty, Node *lhs, Node *rhs) {
+  Node *node = malloc(sizeof(Node));
+  node->ty = ty;
+  node->lhs = lhs;
+  node->rhs = rhs;
+  return node;
+}
+
+// create a node of number
+Node *new_node_num (int val) {
+  Node *node = malloc(sizeof(Node));
+  node->ty = ND_NUM;
+  node->val = val;
+  return node;
+}
+
+// function prototypes
+Node *expr (char *user_input);
+Node *mul (char *user_input);
+Node *term (char *user_input);
+
+// create syntax tree of an expression.
+// an expression consists of the first multi-value and
+// zero or more "+ multi-value" or "- multi-value".
+// in other words in EBNF,
+//   expr = mul ("+" mul | "-" mul)*
+Node *expr (char *user_input) {
+  Node *node = mul(user_input);
+
+  for (;;) {
+    if (consume('+')) {
+      node = new_node('+', node, mul(user_input));
+    } else if (consume('-')) {
+      node = new_node('-', node, mul(user_input));
+    } else {
+      return node;
+    }
+  }
+}
+
+// create syntax tree of a multi-value.
+// a multi-value consists of the first term and
+// zero or more "* term" or "/ term".
+// in other words in EBNF,
+//   mul = term ("*" term | "/" term)*
+Node *mul (char *user_input) {
+  Node *node = term(user_input);
+
+  for (;;) {
+    // if the target token is '*', create a node of '*'
+    if (consume('*')) {
+      node = new_node('*', node, term(user_input));
+
+    // if the target token is '/', create a node of '/'
+    } else if (consume('/')) {
+      node = new_node('/', node, term(user_input));
+
+    } else {
+      return node;
+    }
+  }
+}
+
+// create syntax tree of a term.
+// a term consists of a number or "(" expr ")".
+// in other words in EBNF,
+//   term = number | "(" expr ")"
+Node *term (char *user_input) {
+  // if the target token is '('
+  if (consume('(')) {
+    // create a node of expression
+    Node *node = expr(user_input);
+
+    if (!consume(')')) {
+      error_at(
+        user_input, tokens[pos].input, "')' does not exist");
+    }
+    return node;
+  }
+
+  // if the target token is not '(', its type should be TK_NUM
+  if (tokens[pos].ty == TK_NUM) {
+    return new_node_num(tokens[pos++].val);
+  }
+
+  error_at(
+    user_input, tokens[pos].input,
+    "target token is neither a left parenthesis '(' nor a number");
+}
+
+// generate assembly from syntax tree
+void gen (Node *node) {
+  if (node->ty == ND_NUM) {
+    printf("  push %d\n", node->val);
+    return;
+  }
+
+  gen(node->lhs);
+  gen(node->rhs);
+
+  printf("  pop rdi\n");
+  printf("  pop rax\n");
+
+  switch (node->ty) {
+  case '+':
+    printf("  add rax, rdi\n");
+    break;
+  case '-':
+    printf("  sub rax, rdi\n");
+    break;
+  case '*':
+    printf("  mul rdi\n");
+    break;
+  case '/':
+    printf("  mov rdx, 0\n");
+    printf("  div rdi\n");
+  }
+
+  printf("  push rax\n");
+}
+
 int main (int argc, char **argv) {
   // if number of arguments is not 2, show usage and return 1
   if (argc != 2) {
@@ -103,7 +251,13 @@ int main (int argc, char **argv) {
   // source code
   char *user_input = argv[1];
   // tokenize
+  // NOTE: following function tokenizes user_input,
+  //       and then put each token into the array "tokens".
+  //       tokens is an global variable.
   tokenize(user_input);
+
+  // create syntax tree of tokens
+  Node *node = expr(user_input);
 
   // command to specify the syntax of assembly
   printf(".intel_syntax noprefix\n");
@@ -112,43 +266,11 @@ int main (int argc, char **argv) {
   // main function
   printf("main:\n");
 
-  // the first character of input program should be an integer
-  if (tokens[0].ty != TK_NUM) {
-    error_at(user_input, tokens[0].input, "first token is not a number");
-  }
+  // generate assembly from syntax tree
+  gen(node);
 
-  // move the first integer that is specified in argv[1] to rax.
-  // RAX is a register. the data in RAX when the function returns
-  // is used to return value of the function.
-  printf("  mov rax, %d\n", tokens[0].val);
-
-  // index of token array
-  int i = 1;
-  while (tokens[i].ty != TK_EOF) {
-    if (tokens[i].ty == '+') {
-      ++i;
-      if (tokens[i].ty != TK_NUM) {
-        error_at(user_input, tokens[i].input, "token after '+' should be a number");
-      }
-      // adds the integer to the right of '+' to rax.
-      printf("  add rax, %d\n", tokens[i].val);
-      ++i;
-      continue;
-    }
-
-    if (tokens[i].ty == '-') {
-      ++i;
-      if (tokens[i].ty != TK_NUM) {
-        error_at(user_input, tokens[i].input, "token after '-' should be a number");
-      }
-      // substracts the integer to the right of '+' from rax.
-      printf("  sub rax, %ld\n", tokens[i].val);
-      ++i;
-      continue;
-    }
-
-    error_at(user_input, tokens[i].input, "unexpected token");
-  }
+  // the result value should be on the top of the stack, so pop
+  printf("  pop rax\n");
 
   // return
   printf("  ret\n");

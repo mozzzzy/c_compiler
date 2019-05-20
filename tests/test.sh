@@ -26,10 +26,21 @@ try() {
 }
 
 # test main
+# check that 9cc can compile the expression that
+# has a number
 try 0 0
 try 42 42
+# check that 9cc can compile the expression that
+# has + or -
 try 21 "5+20-4"
+# check that 9cc can compile the expression that
+# has spaces
 try 21 "5 + 20 - 4"
 try 21 "5+ 20 -4"
 try 21 " 5 + 20 - 4 "
+# check that 9cc can compile the expression that
+# has * or or / or ( )
+try 47 "5+6*7"
+try 15 "5*(9-6)"
+try 4 "(3+5)/2"
 echo ALL OK
