@@ -82,7 +82,7 @@ void tokenize (char *user_input) {
       continue;
     }
 
-    // tokenize + and -
+    // tokenize +, -, *, /, (, )
     if (*p == '+' || *p == '-' || *p == '*' || *p == '/'
         || *p == '(' || *p == ')') {
       tokens[i].ty = *p;
