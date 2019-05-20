@@ -139,6 +139,7 @@ Node *new_node_num (int val) {
 // function prototypes
 Node *expr (char *user_input);
 Node *mul (char *user_input);
+Node *unary (char *user_input);
 Node *term (char *user_input);
 
 // create syntax tree of an expression.
@@ -161,26 +162,42 @@ Node *expr (char *user_input) {
 }
 
 // create syntax tree of a multi-value.
-// a multi-value consists of the first term and
-// zero or more "* term" or "/ term".
+// a multi-value consists of the first unary and
+// zero or more "* unary" or "/ unary".
 // in other words in EBNF,
-//   mul = term ("*" term | "/" term)*
+//   mul = unary ("*" unary | "/" unary)*
 Node *mul (char *user_input) {
-  Node *node = term(user_input);
+  Node *node = unary(user_input);
 
   for (;;) {
     // if the target token is '*', create a node of '*'
     if (consume('*')) {
-      node = new_node('*', node, term(user_input));
+      node = new_node('*', node, unary(user_input));
 
     // if the target token is '/', create a node of '/'
     } else if (consume('/')) {
-      node = new_node('/', node, term(user_input));
+      node = new_node('/', node, unary(user_input));
 
     } else {
       return node;
     }
   }
+}
+
+// create syntax tree of an unary.
+// an unary consists of zero or one "+" or "-" and a term.
+// in other words in EBNF,
+//   unary = ("+" | "-")? term
+Node *unary (char *user_input) {
+  if (consume('+')) {
+    return term(user_input);
+  }
+  if (consume('-')) {
+    // if there is "-x",
+    // replace to "0 - x"
+    return new_node('-', new_node_num(0), term(user_input));
+  }
+  return term(user_input);
 }
 
 // create syntax tree of a term.

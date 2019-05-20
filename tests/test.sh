@@ -43,4 +43,8 @@ try 21 " 5 + 20 - 4 "
 try 47 "5+6*7"
 try 15 "5*(9-6)"
 try 4 "(3+5)/2"
+# check that 9cc can compile the expression that
+# haz unary operator - or +
+try 8 "-4 + 12"
+try 20 "-4 * -5"
 echo ALL OK
