@@ -7,27 +7,31 @@
 /**
  * data tipes
  */
-// number to specify the type of token
+// number to specify the token type
 enum {
   TK_NUM = 256,   // integer token
-  TK_EOF,         // end of input token
+  TK_EQ,          // equal                 ==
+  TK_NE,          // not qeual             !=
+  TK_LE,          // less than or equal    <=
+  TK_GE,          // greater than or equal >=
+  TK_EOF          // end of input token
 };
 
-// number to specify the type of node
+// number to specify the node type
 enum {
   ND_NUM = 256,   // node type of integer
 };
 
-// type of a token
+// data type of a token
 typedef struct {
-  int ty;       // type of token
+  int ty;       // token type
   int val;      // if ty == TK_NUM, val is token's value
   char *input;  // token string (for error messaging)
 } Token;
 
 // type of a node of syntax tree
 typedef struct Node {
-  int ty;
+  int ty;             // node type
   struct Node *lhs;   // left-hand side
   struct Node *rhs;   // right-hand side
   int val;            // the value of token.
@@ -41,10 +45,11 @@ typedef struct Node {
 char *USAGE = "Usage:\n"
               "  %s CODE\n";
 
-// tokenized results (= token)
+// tokenized results (= tokens)
 // NOTE: we can't tokenize the program which has more than 100 tokens.
 Token tokens[100];
 
+// specify the position of the target token of the above array
 int pos = 0;
 
 /**
@@ -82,9 +87,41 @@ void tokenize (char *user_input) {
       continue;
     }
 
-    // tokenize +, -, *, /, (, )
+    // tokenize ==
+    if (strncmp(p, "==", 2) == 0) {
+      tokens[i].ty = TK_EQ;
+      ++i;
+      p += 2;
+      continue;
+    }
+
+    // tokenize !=
+    if (strncmp(p, "!=", 2) == 0) {
+      tokens[i].ty = TK_NE;
+      ++i;
+      p += 2;
+      continue;
+    }
+
+    // tokenize <=
+    if (strncmp(p, "<=", 2) == 0) {
+      tokens[i].ty = TK_LE;
+      ++i;
+      p += 2;
+      continue;
+    }
+
+    // tokenize <=
+    if (strncmp(p, ">=", 2) == 0) {
+      tokens[i].ty = TK_GE;
+      ++i;
+      p += 2;
+      continue;
+    }
+
+    // tokenize +, -, *, /, (, ), <, >
     if (*p == '+' || *p == '-' || *p == '*' || *p == '/'
-        || *p == '(' || *p == ')') {
+        || *p == '(' || *p == ')' || *p == '<' || *p == '>') {
       tokens[i].ty = *p;
       tokens[i].input = p;
       ++i;
@@ -92,7 +129,7 @@ void tokenize (char *user_input) {
       continue;
     }
 
-    // tokenize a integer
+    // tokenize an integer
     if (isdigit(*p)) {
       tokens[i].ty = TK_NUM;
       tokens[i].input = p;
@@ -137,82 +174,142 @@ Node *new_node_num (int val) {
 }
 
 // function prototypes
-Node *expr (char *user_input);
-Node *mul (char *user_input);
-Node *unary (char *user_input);
-Node *term (char *user_input);
+Node *expr();
+Node *equality();
+Node *relational();
+Node *add();
+Node *mul();
+Node *unary();
+Node *term();
+// EBNF
+// expr       = equality
+// equality   = relational ("==" relational | "!=" relational)*
+// relational = add ("<" add | "<=" add | ">" add | ">=" add)*
+// add        = mul ("+" mul | "-" mul)*
+// mul        = unary ("*" unary | "/" unary)*
+// unary      = ("+" | "-")? term
+// term       = num | "(" expr ")"
 
-// create syntax tree of an expression.
-// an expression consists of the first multi-value and
-// zero or more "+ multi-value" or "- multi-value".
-// in other words in EBNF,
-//   expr = mul ("+" mul | "-" mul)*
-Node *expr (char *user_input) {
-  Node *node = mul(user_input);
 
+// creates nodes that form an expr
+// expr       = equality
+Node *expr () {
+  Node *node = equality();
+  return node;
+}
+
+// creates nodes that form an equality
+// equality   = relational ("==" relational | "!=" relational)*
+Node *equality () {
+  Node *node = relational();
   for (;;) {
+    // if target token is "=="
+    if (consume(TK_EQ)) {
+      // create a node whose type is TK_EQ
+      // and whose left-hand side is the relational in the front
+      // and whose right-hand size is the relational in the back
+      node = new_node(TK_EQ, node, relational());
+
+    // the following lines are a repeat of the same thing
+    } else if (consume(TK_NE)) {
+      node = new_node(TK_NE, node, relational());
+    } else {
+      return node;
+    }
+  }
+}
+
+// creates nodes that form a relational
+// relational = add ("<" add | "<=" add | ">" add | ">=" add)*
+Node *relational () {
+  Node *node = add();
+  for (;;) {
+    // if target token is <
+    if (consume('<')) {
+      // create a node whose type is '<'
+      // and whose left-hand side is the add in the front
+      // and whose right-hand size is the add in the back
+      node = new_node('<', node, add());
+
+    // the following lines are a repeat of the same thing
+    } else if (consume('>')) {
+      node = new_node('<', node, add());
+    } else if (consume(TK_GE)) {
+      node = new_node(TK_GE, node, add());
+    } else if (consume(TK_LE)) {
+      node = new_node(TK_LE, node, add());
+    } else {
+      return node;
+    }
+  }
+}
+
+// creates nodes that form a add
+// add        = mul ("+" mul | "-" mul)*
+Node *add() {
+  Node *node = mul();
+  for (;;) {
+    // if target token is +
     if (consume('+')) {
-      node = new_node('+', node, mul(user_input));
+      // create a node whose type is '+'
+      // and whose left-hand side is the mul in the front
+      // and whose right-hand side is the mul in the back
+      node = new_node('+', node, mul());
+
+    // the following lines are a repeat of the same thing
     } else if (consume('-')) {
-      node = new_node('-', node, mul(user_input));
+      node = new_node('-', node, mul());
     } else {
       return node;
     }
   }
 }
 
-// create syntax tree of a multi-value.
-// a multi-value consists of the first unary and
-// zero or more "* unary" or "/ unary".
-// in other words in EBNF,
-//   mul = unary ("*" unary | "/" unary)*
-Node *mul (char *user_input) {
-  Node *node = unary(user_input);
-
+// creates nodes that form a mul
+// mul        = unary ("*" unary | "/" unary)*
+Node *mul () {
+  Node *node = unary();
   for (;;) {
-    // if the target token is '*', create a node of '*'
+    // if the target token is '*'
     if (consume('*')) {
-      node = new_node('*', node, unary(user_input));
+      // create a node whose type is '*'
+      // and whose left-hand side is the unary in the front
+      // and whose right-hand side is the unary in the back
+      node = new_node('*', node, unary());
 
-    // if the target token is '/', create a node of '/'
+    // the following lines are a repeat of the same thing
     } else if (consume('/')) {
-      node = new_node('/', node, unary(user_input));
-
+      node = new_node('/', node, unary());
     } else {
       return node;
     }
   }
 }
 
-// create syntax tree of an unary.
-// an unary consists of zero or one "+" or "-" and a term.
-// in other words in EBNF,
-//   unary = ("+" | "-")? term
-Node *unary (char *user_input) {
+// creates nodes that form a unary
+// unary      = ("+" | "-")? term
+Node *unary () {
   if (consume('+')) {
-    return term(user_input);
+    return term();
   }
   if (consume('-')) {
     // if there is "-x",
     // replace to "0 - x"
-    return new_node('-', new_node_num(0), term(user_input));
+    return new_node('-', new_node_num(0), term());
   }
-  return term(user_input);
+  return term();
 }
 
-// create syntax tree of a term.
-// a term consists of a number or "(" expr ")".
-// in other words in EBNF,
-//   term = number | "(" expr ")"
-Node *term (char *user_input) {
+// creates nodes that form term
+// term       = num | "(" expr ")"
+Node *term () {
   // if the target token is '('
   if (consume('(')) {
     // create a node of expression
-    Node *node = expr(user_input);
+    Node *node = expr();
 
     if (!consume(')')) {
-      error_at(
-        user_input, tokens[pos].input, "')' does not exist");
+      error("term(): ')' does not exist");
     }
     return node;
   }
@@ -222,13 +319,14 @@ Node *term (char *user_input) {
     return new_node_num(tokens[pos++].val);
   }
 
-  error_at(
-    user_input, tokens[pos].input,
-    "target token is neither a left parenthesis '(' nor a number");
+  error(
+    "term(): target token is neither a left parenthesis '(' nor a number");
 }
 
-// generate assembly from syntax tree
+// generate assembly from a syntax tree
 void gen (Node *node) {
+  // if top node of the syntax tree is ND_NUM,
+  // the provided expression is only a number
   if (node->ty == ND_NUM) {
     printf("  push %d\n", node->val);
     return;
@@ -253,6 +351,44 @@ void gen (Node *node) {
   case '/':
     printf("  mov rdx, 0\n");
     printf("  div rdi\n");
+    break;
+  case TK_EQ:
+    // compare rax and rdi.
+    // on x86-64 architecture, the result of comparison is set to FLAGS register.
+    // this register has some bits to contains the current state of the processor.
+    printf("  cmp rax, rdi\n");
+    // "sete" set 1 to al when previous cmp result is the same.
+    // register AL is lower 8 bits of RAX.
+    printf("  sete al\n");
+    // when sete update AL value, RAX is updated too. but the upper 8 bits stay.
+    // to zero clear the upper 8 bits of RAX, execute movzb.
+    printf("  movzb rax, al\n");
+    break;
+  case TK_NE:
+    printf("  cmp rax, rdi\n");
+    printf("  setne al\n");
+    printf("  movzb rax, al\n");
+    break;
+  case TK_GE:
+    printf("  cmp rdi, rax\n");
+    printf("  setle al\n");
+    printf("  movzb rax, al\n");
+    break;
+  case '>':
+    printf("  cmp rdi, rax\n");
+    printf("  setl al\n");
+    printf("  movzb rax, al\n");
+    break;
+  case TK_LE:
+    printf("  cmp rax, rdi\n");
+    printf("  setle al\n");
+    printf("  movzb rax, al\n");
+    break;
+  case '<':
+    printf("  cmp rax, rdi\n");
+    printf("  setl al\n");
+    printf("  movzb rax, al\n");
+    break;
   }
 
   printf("  push rax\n");

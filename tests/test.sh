@@ -44,7 +44,28 @@ try 47 "5+6*7"
 try 15 "5*(9-6)"
 try 4 "(3+5)/2"
 # check that 9cc can compile the expression that
-# haz unary operator - or +
+# has unary operator - or +
 try 8 "-4 + 12"
 try 20 "-4 * -5"
+# check that 9cc can compile the expression that has ==
+try 1 "111 == 111"
+try 0 "13 == 5"
+try 1 "111 == 111 == 1"
+try 0 "111 == 115 == 1"
+try 0 "1 == (115 == 111)"
+# check that 9cc can compile the expression that has !=
+try 0 "111 != 111"
+try 1 "13 != 5"
+try 1 "111 != 111 != 1"
+try 0 "111 != 115 != 1"
+# check that 9cc can compile the expression that has <=
+try 1 "10 <= 123"
+try 1 "123 <= 123"
+try 0 "123 <= 123 <= 0"
+# check that 9cc can compile the expression that has <=
+try 1 "10 < 123"
+try 0 "123 < 123"
+try 0 "123 < 123 < 0"
+
+
 echo ALL OK
