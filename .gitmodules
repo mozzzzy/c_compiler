@@ -1,0 +1,3 @@
+[submodule "src/linkedlist"]
+	path = src/linkedlist
+	url = https://github.com/mozzzzy/linkedlist.git

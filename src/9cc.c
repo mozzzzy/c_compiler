@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <linkedList.h>
+
 /**
  * data tipes
  */
@@ -45,13 +47,6 @@ typedef struct Node {
 char *USAGE = "Usage:\n"
               "  %s CODE\n";
 
-// tokenized results (= tokens)
-// NOTE: we can't tokenize the program which has more than 100 tokens.
-Token tokens[100];
-
-// specify the position of the target token of the above array
-int pos = 0;
-
 /**
  * functions
  */
@@ -75,46 +70,57 @@ void error_at (char *user_input, char *loc, char *msg) {
 }
 
 // tokenize user input and put each token to the array
-void tokenize (char *user_input) {
+void tokenize (char *user_input, LinkedList *linked_list) {
+  fprintf(stderr, "tokenize start\n");
+
   char *p = user_input;
+  fprintf(stderr, "user_input is following codes\n");
+  fprintf(stderr, "8< - - 8< - - 8< - - 8<\n");
+  fprintf(stderr, "%s", p);
+  fprintf(stderr, "\n8< - - 8< - - 8< - - 8<\n");
 
   // index of the array
-  int i = 0;
   while (*p) {
     // skip a space
     if (isspace(*p)) {
+      fprintf(stderr, "get a space\n");
       ++p;
       continue;
     }
 
+    Token *token = (Token *)malloc(sizeof(Token));
     // tokenize ==
     if (strncmp(p, "==", 2) == 0) {
-      tokens[i].ty = TK_EQ;
-      ++i;
+      fprintf(stderr, "get a ==\n");
+      token->ty = TK_EQ;
+      addData(linked_list, token);
       p += 2;
       continue;
     }
 
     // tokenize !=
     if (strncmp(p, "!=", 2) == 0) {
-      tokens[i].ty = TK_NE;
-      ++i;
+      fprintf(stderr, "get a !=\n");
+      token->ty = TK_NE;
+      addData(linked_list, token);
       p += 2;
       continue;
     }
 
     // tokenize <=
     if (strncmp(p, "<=", 2) == 0) {
-      tokens[i].ty = TK_LE;
-      ++i;
+      fprintf(stderr, "get a <=\n");
+      token->ty = TK_LE;
+      addData(linked_list, token);
       p += 2;
       continue;
     }
 
     // tokenize <=
     if (strncmp(p, ">=", 2) == 0) {
-      tokens[i].ty = TK_GE;
-      ++i;
+      fprintf(stderr, "get a >=\n");
+      token->ty = TK_GE;
+      addData(linked_list, token);
       p += 2;
       continue;
     }
@@ -122,65 +128,89 @@ void tokenize (char *user_input) {
     // tokenize +, -, *, /, (, ), <, >
     if (*p == '+' || *p == '-' || *p == '*' || *p == '/'
         || *p == '(' || *p == ')' || *p == '<' || *p == '>') {
-      tokens[i].ty = *p;
-      tokens[i].input = p;
-      ++i;
+      fprintf(stderr, "get a %c\n", *p);
+      token->ty = *p;
+      token->input = p;
+      addData(linked_list, token);
       ++p;
       continue;
     }
 
     // tokenize an integer
     if (isdigit(*p)) {
-      tokens[i].ty = TK_NUM;
-      tokens[i].input = p;
+      fprintf(stderr, "get a number\n");
+      token->ty = TK_NUM;
+      token->input = p;
       // NOTE: strtol update the pointer that is specified in second parameter
       //       to the next character of last read
-      tokens[i].val = strtol(p, &p, 10);
-      ++i;
+      long val = strtol(p, &p, 10);
+      fprintf(stderr, "the geven value is %ld\n", val);
+      token->val = val;
+      addData(linked_list, token);
       continue;
     }
 
     error_at(user_input, p, "can not tokenize.");
   }
-  tokens[i].ty = TK_EOF;
-  tokens[i].input = p;
+
+  fprintf(stderr, "finally, add EOF token\n");
+  Token *token = (Token *)malloc(sizeof(Token));
+  token->ty = TK_EOF;
+  token->input = p;
+
+  addData(linked_list, token);
+  fprintf(stderr, "total %d tokens is generated\n", linked_list->data_num);
+
+  fprintf(stderr, "tokenize finish\n");
 }
 
 // check token type, and if token is the same with the variable,
 // increment pos (it is a global variable) and return true, otherwise return false
-int consume (int ty) {
-  if (tokens[pos].ty != ty) {
+int consume (LinkedList *linked_list, int ty) {
+  fprintf(stderr, "consume start\n");
+  Token *token = getData(linked_list, 0);
+  if (token->ty != ty) {
+    fprintf(stderr, "got token is not expected type. consume finish\n");
     return 0;
   }
-  ++pos;
+  removeData(linked_list, 0);
+  fprintf(stderr, "got token is expected type. consume finish\n");
   return 1;
 }
 
 // create a node of binary operator
 Node *new_node (int ty, Node *lhs, Node *rhs) {
+  fprintf(stderr, "new_node start\n");
+
   Node *node = malloc(sizeof(Node));
   node->ty = ty;
   node->lhs = lhs;
   node->rhs = rhs;
+
+  fprintf(stderr, "new_node finish\n");
   return node;
 }
 
 // create a node of number
 Node *new_node_num (int val) {
+  fprintf(stderr, "new_node_num start\n");
+
   Node *node = malloc(sizeof(Node));
   node->ty = ND_NUM;
   node->val = val;
+
+  fprintf(stderr, "new_node_num finish\n");
   return node;
 }
 
 // function prototypes
-Node *expr();
-Node *equality();
-Node *relational();
-Node *add();
-Node *mul();
-Node *unary();
-Node *term();
+Node *expr(LinkedList *linked_list);
+Node *equality(LinkedList *linked_list);
+Node *relational(LinkedList *linked_list);
+Node *add(LinkedList *linked_list);
+Node *mul(LinkedList *linked_list);
+Node *unary(LinkedList *linked_list);
+Node *term(LinkedList *linked_list);
 // EBNF
 // expr       = equality
 // equality   = relational ("==" relational | "!=" relational)*
@@ -193,26 +223,26 @@ Node *term();
 
 // creates nodes that form an expr
 // expr       = equality
-Node *expr () {
-  Node *node = equality();
+Node *expr (LinkedList *linked_list) {
+  Node *node = equality(linked_list);
   return node;
 }
 
 // creates nodes that form an equality
 // equality   = relational ("==" relational | "!=" relational)*
-Node *equality () {
-  Node *node = relational();
+Node *equality (LinkedList *linked_list) {
+  Node *node = relational(linked_list);
   for (;;) {
     // if target token is "=="
-    if (consume(TK_EQ)) {
+    if (consume(linked_list, TK_EQ)) {
       // create a node whose type is TK_EQ
       // and whose left-hand side is the relational in the front
       // and whose right-hand size is the relational in the back
-      node = new_node(TK_EQ, node, relational());
+      node = new_node(TK_EQ, node, relational(linked_list));
 
     // the following lines are a repeat of the same thing
-    } else if (consume(TK_NE)) {
-      node = new_node(TK_NE, node, relational());
+    } else if (consume(linked_list, TK_NE)) {
+      node = new_node(TK_NE, node, relational(linked_list));
     } else {
       return node;
     }
@@ -221,23 +251,23 @@ Node *equality () {
 
 // creates nodes that form a relational
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
-Node *relational () {
-  Node *node = add();
+Node *relational (LinkedList *linked_list) {
+  Node *node = add(linked_list);
   for (;;) {
     // if target token is <
-    if (consume('<')) {
+    if (consume(linked_list, '<')) {
       // create a node whose type is '<'
       // and whose left-hand side is the add in the front
       // and whose right-hand size is the add in the back
-      node = new_node('<', node, add());
+      node = new_node('<', node, add(linked_list));
 
     // the following lines are a repeat of the same thing
-    } else if (consume('>')) {
-      node = new_node('<', node, add());
-    } else if (consume(TK_GE)) {
-      node = new_node(TK_GE, node, add());
-    } else if (consume(TK_LE)) {
-      node = new_node(TK_LE, node, add());
+    } else if (consume(linked_list, '>')) {
+      node = new_node('<', node, add(linked_list));
+    } else if (consume(linked_list, TK_GE)) {
+      node = new_node(TK_GE, node, add(linked_list));
+    } else if (consume(linked_list, TK_LE)) {
+      node = new_node(TK_LE, node, add(linked_list));
     } else {
       return node;
     }
@@ -246,19 +276,19 @@ Node *relational () {
 
 // creates nodes that form a add
 // add        = mul ("+" mul | "-" mul)*
-Node *add() {
-  Node *node = mul();
+Node *add(LinkedList *linked_list) {
+  Node *node = mul(linked_list);
   for (;;) {
     // if target token is +
-    if (consume('+')) {
+    if (consume(linked_list, '+')) {
       // create a node whose type is '+'
       // and whose left-hand side is the mul in the front
       // and whose right-hand side is the mul in the back
-      node = new_node('+', node, mul());
+      node = new_node('+', node, mul(linked_list));
 
     // the following lines are a repeat of the same thing
-    } else if (consume('-')) {
-      node = new_node('-', node, mul());
+    } else if (consume(linked_list, '-')) {
+      node = new_node('-', node, mul(linked_list));
     } else {
       return node;
     }
@@ -267,19 +297,19 @@ Node *add() {
 
 // creates nodes that form a mul
 // mul        = unary ("*" unary | "/" unary)*
-Node *mul () {
-  Node *node = unary();
+Node *mul (LinkedList *linked_list) {
+  Node *node = unary(linked_list);
   for (;;) {
     // if the target token is '*'
-    if (consume('*')) {
+    if (consume(linked_list, '*')) {
       // create a node whose type is '*'
       // and whose left-hand side is the unary in the front
       // and whose right-hand side is the unary in the back
-      node = new_node('*', node, unary());
+      node = new_node('*', node, unary(linked_list));
 
     // the following lines are a repeat of the same thing
-    } else if (consume('/')) {
-      node = new_node('/', node, unary());
+    } else if (consume(linked_list, '/')) {
+      node = new_node('/', node, unary(linked_list));
     } else {
       return node;
     }
@@ -288,35 +318,37 @@ Node *mul () {
 
 // creates nodes that form a unary
 // unary      = ("+" | "-")? term
-Node *unary () {
-  if (consume('+')) {
-    return term();
+Node *unary (LinkedList *linked_list) {
+  if (consume(linked_list, '+')) {
+    return term(linked_list);
   }
-  if (consume('-')) {
+  if (consume(linked_list, '-')) {
     // if there is "-x",
     // replace to "0 - x"
-    return new_node('-', new_node_num(0), term());
+    return new_node('-', new_node_num(0), term(linked_list));
   }
-  return term();
+  return term(linked_list);
 }
 
 // creates nodes that form term
 // term       = num | "(" expr ")"
-Node *term () {
+Node *term (LinkedList *linked_list) {
   // if the target token is '('
-  if (consume('(')) {
+  if (consume(linked_list, '(')) {
     // create a node of expression
-    Node *node = expr();
+    Node *node = expr(linked_list);
 
-    if (!consume(')')) {
+    if (!consume(linked_list, ')')) {
       error("term(): ')' does not exist");
     }
     return node;
   }
 
   // if the target token is not '(', its type should be TK_NUM
-  if (tokens[pos].ty == TK_NUM) {
-    return new_node_num(tokens[pos++].val);
+  Token *token = getData(linked_list, 0);
+  if (token->ty == TK_NUM) {
+    removeData(linked_list, 0);
+    return new_node_num(token->val);
   }
 
   error(
@@ -395,6 +427,8 @@ void gen (Node *node) {
 }
 
 int main (int argc, char **argv) {
+  fprintf(stderr, "%s start\n", argv[0]);
+
   // if number of arguments is not 2, show usage and return 1
   if (argc != 2) {
     error(USAGE, argv[0]);
@@ -403,14 +437,26 @@ int main (int argc, char **argv) {
 
   // source code
   char *user_input = argv[1];
+
+  // create linked list
+  fprintf(stderr, "create a linked list\n");
+  LinkedList *linked_list = initLinkedList();
+  fprintf(stderr, "created successfully\n");
+
   // tokenize
   // NOTE: following function tokenizes user_input,
   //       and then put each token into the array "tokens".
   //       tokens is an global variable.
-  tokenize(user_input);
+  fprintf(stderr, "tokenize the geven program\n");
+  tokenize(user_input, linked_list);
+  fprintf(stderr, "tokenized successfully\n");
 
   // create syntax tree of tokens
-  Node *node = expr(user_input);
+  fprintf(stderr, "create a syntax tree\n");
+  Node *node = expr(linked_list);
+  fprintf(stderr, "created a syntax tree successfully\n");
+
+  fprintf(stderr, "output compiled assembly\n\n");
 
   // command to specify the syntax of assembly
   printf(".intel_syntax noprefix\n");

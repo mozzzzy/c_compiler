@@ -6,7 +6,8 @@ try() {
   input="$2"
 
   # create assembly file
-  ../src/9cc "$input" > tmp.s
+  export LD_LIBRARY_PATH=`pwd`/../src/linkedlist/src:${LD_LIBRARY_PATH} \
+  && ../src/9cc "$input" > tmp.s
   # create executable file from assembly file
   gcc -o tmp tmp.s
   # execute
@@ -66,6 +67,7 @@ try 0 "123 <= 123 <= 0"
 try 1 "10 < 123"
 try 0 "123 < 123"
 try 0 "123 < 123 < 0"
-
+# check that 9cc can compile the expression that has more than 100 tokens
+try 225 "1+2+3+4+5+6+7+8+9+0+1+2+3+4+5+6+7+8+9+0+1+2+3+4+5+6+7+8+9+0+1+2+3+4+5+6+7+8+9+0+1+2+3+4+5+6+7+8+9"
 
 echo ALL OK
