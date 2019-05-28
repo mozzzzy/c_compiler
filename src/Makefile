@@ -1,3 +1,10 @@
+CSRC = \
+			code_generator.c \
+			error_handler.c \
+			node.c \
+			tokenizer.c \
+			9cc.c \
+
 CFLAGS = -g
 CPPFLAGS = \
           -I./linkedlist/src/
@@ -6,7 +13,7 @@ LDFLAGS = \
 LDLIBS = \
           -llinkedlist
 
-9cc: 9cc.c
+9cc: $(CSRC)
 
 clean:
 	rm -f 9cc *.o *~ tmp*
