@@ -5,7 +5,7 @@ CSRC = \
 			tokenizer.c \
 			9cc.c \
 
-CFLAGS = -g
+CFLAGS = -g -Wall
 CPPFLAGS = \
           -I./linkedlist/src/
 LDFLAGS = \

@@ -187,4 +187,6 @@ Node *term (LinkedList *linked_list) {
 
   error(
     "term(): target token is neither a left parenthesis '(' nor a number");
+
+  return NULL;
 }
