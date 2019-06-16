@@ -7,7 +7,6 @@
 #include "node.h"
 #include "tokenizer.h"      // Token data type
 
-
 /**
  * functions
  */
@@ -37,28 +36,75 @@ Node *new_node_num (int val) {
   return node;
 }
 
-// function prototypes
-Node *expr(LinkedList *linked_list);
-Node *equality(LinkedList *linked_list);
-Node *relational(LinkedList *linked_list);
-Node *add(LinkedList *linked_list);
-Node *mul(LinkedList *linked_list);
-Node *unary(LinkedList *linked_list);
-Node *term(LinkedList *linked_list);
-// EBNF
-// expr       = equality
-// equality   = relational ("==" relational | "!=" relational)*
-// relational = add ("<" add | "<=" add | ">" add | ">=" add)*
-// add        = mul ("+" mul | "-" mul)*
-// mul        = unary ("*" unary | "/" unary)*
-// unary      = ("+" | "-")? term
-// term       = num | "(" expr ")"
+// create a node of identifier
+Node *new_node_ident (char name) {
+  fprintf(stderr, "new_node_ident start\n");
 
+  Node *node = malloc(sizeof(Node));
+  node->ty = ND_IDENT;
+  node->name = name;
+
+  fprintf(stderr, "new_node_ident finish\n");
+  return node;
+}
+
+// EBNF
+// program    = stmt*
+// stmt       = expr ";"
+// expr       = assign
+// assign     = equality ("=" assign)?
+// equality   = relational ("==" relational | "!= relational)*
+// relational = add ("<" add | "<=" add | ">=" add)*
+// add        = mul ("+" mul | "-" mul)*
+// mul        = unary ("*" unary | unary)*
+// unary      = ("+" | "-")? term
+// term       = num | ident | "(" expr ")"
+
+// creates nodes that form a program
+// program = stmt*
+void program (LinkedList *linked_list) {
+  int stmt_count = 0;
+  while (1) {
+    // get a token from linked_list
+    Token *token = getData(linked_list, 0);
+
+    // if the token type is TK_EOF, break
+    if (token->ty == TK_EOF) {
+      break;
+    }
+
+    code[stmt_count++] = stmt(linked_list);
+  }
+  code[stmt_count] = NULL;
+}
+
+// creates nodes that form a stmt
+// stmt       = expr ";"
+Node *stmt (LinkedList *linked_list) {
+  Node *node = expr(linked_list);
+  // next of expr should be ';'
+  if (!consume(linked_list, ';')) {
+    error("stmt(): token is not ';'");
+  }
+  return node;
+}
 
 // creates nodes that form an expr
-// expr       = equality
-Node *expr (LinkedList *linked_list) {
+// expr       = assign
+Node *expr(LinkedList *linked_list) {
+  Node *node = assign(linked_list);
+  return node;
+}
+
+// creates nodes that form a assign
+// assign     = equality ("=" assign)?
+Node *assign (LinkedList *linked_list) {
   Node *node = equality(linked_list);
+  // if the next token is '='
+  if (consume(linked_list, '=')) {
+    // create a node whose type is '='
+    node = new_node('=', node, assign(linked_list));
+  }
   return node;
 }
 
@@ -165,7 +211,7 @@ Node *unary (LinkedList *linked_list) {
 }
 
 // creates nodes that form term
-// term       = num | "(" expr ")"
+// term       = num | ident | "(" expr ")"
 Node *term (LinkedList *linked_list) {
   // if the target token is '('
   if (consume(linked_list, '(')) {
@@ -178,15 +224,19 @@ Node *term (LinkedList *linked_list) {
     return node;
   }
 
-  // if the target token is not '(', its type should be TK_NUM
+  // if the target token is not '(', its type should be TK_NUM or TK_IDENT
   Token *token = getData(linked_list, 0);
   if (token->ty == TK_NUM) {
     removeData(linked_list, 0);
     return new_node_num(token->val);
   }
+  if (token->ty == TK_IDENT) {
+    removeData(linked_list, 0);
+    return new_node_ident(*(token->input));
+  }
 
   error(
-    "term(): target token is neither a left parenthesis '(' nor a number");
+    "term(): target token is neither a left parenthesis '(' nor a number nor a identifier");
 
   return NULL;
 }

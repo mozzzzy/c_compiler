@@ -19,7 +19,7 @@ void tokenize (char *user_input, LinkedList *linked_list) {
   fprintf(stderr, "%s", p);
   fprintf(stderr, "\n8< - - 8< - - 8< - - 8<\n");
 
-  // index of the array
+  // for each index of the array
   while (*p) {
     // skip a space
     if (isspace(*p)) {
@@ -28,6 +28,7 @@ void tokenize (char *user_input, LinkedList *linked_list) {
       continue;
     }
 
+    // create a new token
     Token *token = (Token *)malloc(sizeof(Token));
     // tokenize ==
     if (strncmp(p, "==", 2) == 0) {
@@ -65,11 +66,22 @@ void tokenize (char *user_input, LinkedList *linked_list) {
       continue;
     }
 
-    // tokenize +, -, *, /, (, ), <, >
+    // tokenize +, -, *, /, (, ), <, >, = ;
     if (*p == '+' || *p == '-' || *p == '*' || *p == '/'
-        || *p == '(' || *p == ')' || *p == '<' || *p == '>') {
-      fprintf(stderr, "get a %c\n", *p);
+        || *p == '(' || *p == ')' || *p == '<' || *p == '>'
+        || *p == '=' || *p == ';') {
+      fprintf(stderr, "get a \"%c\"\n", *p);
       token->ty = *p;
+      token->input = p;
+      addData(linked_list, token);
+      ++p;
+      continue;
+    }
+
+    // tokenize a token
+    if ('a' <= *p && *p <= 'z') {
+      fprintf(stderr, "get an identifier \"%c\"\n", *p);
+      token->ty = TK_IDENT;
       token->input = p;
       addData(linked_list, token);
       ++p;
@@ -109,10 +121,14 @@ void tokenize (char *user_input, LinkedList *linked_list) {
 int consume (LinkedList *linked_list, int ty) {
   fprintf(stderr, "consume start\n");
   Token *token = getData(linked_list, 0);
+
+  // if token type is not the specified one, return 0
   if (token->ty != ty) {
     fprintf(stderr, "got token is not expected type. consume finish\n");
     return 0;
   }
+
+  // if token type is the specified one, remove the token and return 1
   removeData(linked_list, 0);
   fprintf(stderr, "got token is expected type. consume finish\n");
   return 1;

@@ -1,5 +1,6 @@
 #include <stdio.h>    // printf
 
+#include "error_handler.h"
 #include "code_generator.h"
 #include "node.h"           // Node data type
 #include "tokenizer.h"      // TK_EQ, TK_NE ...
@@ -8,19 +9,136 @@
  * functions
  */
 
+void gen_lval (Node *node) {
+  if (node->ty != ND_IDENT) {
+    error("gen_lval(): node type is not ND_IDENT");
+  }
+
+  int offset = ('z' - node->name + 1) * 8;
+  // sets address that is contained in rbp to rax.
+  // rbp contains the address that is the top of function frame.
+  //   +-----------------------------+
+  //   |  ...                        |
+  //   +-----------------------------+
+  //   | function frame              | <- RAX, RBP
+  //   |                             |
+  //   |                             |
+  //   |                             |
+  //   |  ...                        |
+  //   |                             | <- RSP
+  //   |  ...                        |
+  //   +-----------------------------+
+  printf("  mov rax, rbp\n");
+  // subtracts offset from rax.
+  // this means to move rax to the address that is calculated by "rbp - offset"
+  //   +-----------------------------+
+  //   |  ...                        |
+  //   +-----------------------------+
+  //   | function frame              | <- RBP
+  //   |                             |
+  //   |                             | <- RAX (= RBP - offset)
+  //   |                             |
+  //   |  ...                        |
+  //   |                             | <- RSP
+  //   |  ...                        |
+  //   +-----------------------------+
+  printf("  sub rax, %d\n", offset);
+  // push value of rax to the stack
+  //   +-----------------------------+
+  //   |  ...                        |
+  //   +-----------------------------+
+  //   | function frame              | <- RBP
+  //   |                             |
+  //   |                             | <- RAX (= RBP - offset)
+  //   |                             |
+  //   |  ...                        |
+  //   |                             | <- RSP
+  //   | value of RAX(= RBP - offset)|
+  //   |  ...                        |
+  //   +-----------------------------+
+  printf("  push rax\n");
+}
+
 // generate assembly from a syntax tree
 void gen (Node *node) {
-  // if top node of the syntax tree is ND_NUM,
-  // the provided expression is only a number
+  // if the node type is ND_NUM
   if (node->ty == ND_NUM) {
+    // push node's value to the stack top.
+    // this command is the same with following commands.
+    //   ```
+    //   mov rax, [rsp]   # -> load the saved value of the memory area
+    //                    #    whose address is saved in RSP to RAX.
+    //   add rsp, 8       # -> add 8 to RSP
+    //   ```
+    // before and after this operation,
+    // RSP register point the following area.
+    //  [Before]
+    //   +-----------------------------+
+    //   |  ...                        |
+    //   +-----------------------------+
+    //   | function frame              |
+    //   |                             |
+    //   |  ...                        |
+    //   |                             |
+    //   |                             |  <- RSP. end of the function frame
+    //   +-----------------------------+
+    //  [After]
+    //   +-----------------------------+
+    //   |  ...                        |
+    //   +-----------------------------+
+    //   | function frame              |
+    //   |                             |
+    //   |  ...                        |
+    //   |                             |  <- RSP
+    //   +-----------------------------+
+    //   | pushed number               |  <- end of the function frame
+    //   +-----------------------------+
+    //
     printf("  push %d\n", node->val);
     return;
   }
 
+  // if the node type is ND_IDENT
+  if (node->ty == ND_IDENT) {
+    // push the address of the area which is allocated for the variable.
+    gen_lval(node);
+    // pop the address to rax.
+    printf("  pop rax\n");
+    // load value from saved address in rax, and save the value into rax
+    printf("  mov rax, [rax]\n");
+    // push the value saved in rax into stack
+    printf("  push rax\n");
+    return;
+  }
+
+  // if the node type is '='
+  if (node->ty == '=') {
+    // push the address of the area which is allocated for the left-hand side variable
+    gen_lval(node->lhs);
+    // push the value of the right-hand side node
+    gen(node->rhs);
+
+    // pop the value to rdi
+    printf("  pop rdi\n");
+    // pop the address of the area for the variable to rax
+    printf("  pop rax\n");
+    // store the value saved in rdi to the address saved in rax
+    printf("  mov [rax], rdi\n");
+    // push the value of rdi
+    printf("  push rdi\n");
+    return;
+  }
+
+  // NOTE: if the node is not number and identifier and '=', reach following lines.
+  //       i.e. +, -, *, /, ==, !=, <, >, <=, >=
+
+  // push the value of the left-hand and right-hand side nodes
   gen(node->lhs);
   gen(node->rhs);
 
+  // pop value of the right-hand side node to rdi
   printf("  pop rdi\n");
+  // pop value of the left-hand side node to rax
   printf("  pop rax\n");
 
   switch (node->ty) {

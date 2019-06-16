@@ -7,6 +7,7 @@
 // number to specify the token type
 enum {
   TK_NUM = 256,   // integer token
+  TK_IDENT,       // identifier            a, b, c
   TK_EQ,          // equal                 ==
   TK_NE,          // not qeual             !=
   TK_LE,          // less than or equal    <=

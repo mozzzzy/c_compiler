@@ -30,19 +30,19 @@ int main (int argc, char **argv) {
 
   // tokenize
   // NOTE: following function tokenizes user_input,
-  //       and then put each token into the array "tokens".
-  //       tokens is an global variable.
+  //       and then put each token into the linked_list.
   fprintf(stderr, "tokenize the geven program\n");
   tokenize(user_input, linked_list);
   fprintf(stderr, "tokenized successfully\n");
 
   // create syntax tree of tokens
   fprintf(stderr, "create a syntax tree\n");
-  Node *node = expr(linked_list);
+  program(linked_list);
   fprintf(stderr, "created a syntax tree successfully\n");
 
   fprintf(stderr, "output compiled assembly\n\n");
 
+  // now write assembly.
   // command to specify the syntax of assembly
   printf(".intel_syntax noprefix\n");
   // this means main function is in global scope, not file scope
@@ -50,13 +50,57 @@ int main (int argc, char **argv) {
   // main function
   printf("main:\n");
 
-  // generate assembly from syntax tree
-  gen(node);
+  // prologue.
+  // allocate space for 26 of variables.
+  // first, push value of memory address that is contained in rbp register
+  // to the stack top.
+  // in x86-64 architecture, rbp register is used as bese register.
+  // this points the start point of the function frame.
+  printf("  push rbp\n");
+  // second, set address that is contained in rsp to rbp.
+  // this address is the top of the main's function frame.
+  // function frame is the memory area that is allocated for each
+  // function call.
+  //   +------------------------------+
+  //   |      ...                     |
+  //   +------------------------------+
+  //   | top of main function frame   | <- RBP, RSP
+  //   +------------------------------+
+  //   |      ...                     |
+  //   |                              |
+  //   |                              |
+  //   |                              |
+  //   +------------------------------+
+  printf("  mov rbp, rsp\n");
+  // finally, subtracts 208 (= 8 * 26) from rsp.
+  // then rbp and rsp register point the following points.
+  //   +------------------------------+
+  //   |      ...                     |
+  //   +------------------------------+
+  //   | top of main function's frame | <- RBP
+  //   +------------------------------+
+  //   |                              |
+  //   | space for 25 of variables.   |
+  //   | (200 byte)                   |
+  //   |                              |
+  //   +------------------------------+
+  //   |                              | <- RSP
+  //   +------------------------------+
+  //
+  printf("  sub rsp, 208\n");   // 8 * 26
 
-  // the result value should be on the top of the stack, so pop
-  printf("  pop rax\n");
+  // generate assembly from syntax tree
+  int code_count = 0;
+  for (code_count = 0; code[code_count]; code_count++) {
+    gen(code[code_count]);
+
+    // the result value should be on the top of the stack, so pop
+    printf("  pop rax\n");
+  }
 
   // return
+  printf("  mov rsp, rbp\n");
+  printf("  pop rbp\n");
   printf("  ret\n");
   return 0;
 }
