@@ -50,7 +50,7 @@ Node *new_node_ident (char name) {
 
 // EBNF
 // program    = stmt*
-// stmt       = expr ";"
+// stmt = expr ";" | "return" expr ";"
 // expr       = assign
 // assign     = equality ("=" assign)?
 // equality   = relational ("==" relational | "!= relational)*
