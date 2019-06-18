@@ -10,6 +10,7 @@
 // number to specify the node type
 enum {
   ND_NUM = 256,   // node type of integer
+  ND_RETURN,      // node type of return
   ND_IDENT,       // node type of identifier
 };
 
@@ -44,7 +45,7 @@ Node *new_node_num (int val);
 
 // EBNF
 // program = stmt*
-// stmt = expr ";"
+// stmt = expr ";" | "return" expr ";"
 // expr = assign
 // assign = equality ("=" assign)?
 // equality = relational ("==" relational | "!= relational)*

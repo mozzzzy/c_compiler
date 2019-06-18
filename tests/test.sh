@@ -69,9 +69,13 @@ try 0 "123 < 123;"
 try 0 "123 < 123 < 0;"
 # check that 9cc can compile the expression that has more than 100 tokens
 try 225 "1+2+3+4+5+6+7+8+9+0+1+2+3+4+5+6+7+8+9+0+1+2+3+4+5+6+7+8+9+0+1+2+3+4+5+6+7+8+9+0+1+2+3+4+5+6+7+8+9;"
-## check that 9cc can compile the program that has variable whose name is formed by one character
+# check that 9cc can compile the program that has variable
+# whose name is formed by one character
 try 10 "a = 10;"
 try 13 "a = 10; a + 3;"
 try 15 "a = 10; b = 5; a + b;"
-
+# check that 9cc can compile the program that has return statement
+try 4 "return 4;"
+try 4 "return 4; 1 + 1;"
+try 4 "return 4; return (1 + 1);"
 echo ALL OK

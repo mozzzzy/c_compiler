@@ -61,6 +61,22 @@ void gen_lval (Node *node) {
 
 // generate assembly from a syntax tree
 void gen (Node *node) {
+  // if node type is ND_RETURN
+  if (node->ty == ND_RETURN) {
+    // generate assembly of the expr that is at next of the return
+    gen(node->lhs);
+    // above expr push the result value on the top of the stack.
+    // so pop it and save into rax.
+    printf("  pop rax\n");
+    // save the value of rbp to rsp
+    printf("  mov rsp, rbp\n");
+    // pop to rbp. the popped data is the previous value of rbp
+    printf("  pop rbp\n");
+    // return
+    printf("  ret\n");
+    return;
+  }
+
   // if the node type is ND_NUM
   if (node->ty == ND_NUM) {
     // push node's value to the stack top.

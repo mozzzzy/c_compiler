@@ -81,7 +81,14 @@ void program (LinkedList *linked_list) {
 // creates nodes that form a stmt
 // stmt       = expr ";"
 Node *stmt (LinkedList *linked_list) {
-  Node *node = expr(linked_list);
+  Node *node = NULL;
+
+  if (consume(linked_list, TK_RETURN)) {
+    node = new_node(ND_RETURN, expr(linked_list), NULL);
+  } else {
+    node = expr(linked_list);
+  }
+
   // next of expr should be ';'
   if (!consume(linked_list, ';')) {
     error("stmt(): token is not ';'");

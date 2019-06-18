@@ -8,6 +8,15 @@
 #include "error_handler.h"  // error_at
 #include "tokenizer.h"
 
+// helper function.
+// check that specified char data is an alphabet or a number or an underscore or not
+int is_alnum (char c) {
+  return
+    ('a' <= c && c <= 'z') ||
+    ('A' <= c && c <= 'Z') ||
+    ('0' <= c && c <= '9') ||
+    (c == '_');
+}
 
 // tokenize user input and put each token to the array
 void tokenize (char *user_input, LinkedList *linked_list) {
@@ -30,6 +39,15 @@ void tokenize (char *user_input, LinkedList *linked_list) {
 
     // create a new token
     Token *token = (Token *)malloc(sizeof(Token));
+    // tokenize "return"
+    if (strncmp(p, "return", 6) == 0 && !is_alnum(p[6])) {
+      token->ty = TK_RETURN;
+      token->input = p;
+      addData(linked_list, token);
+      p += 6;
+      continue;
+    }
+
     // tokenize ==
     if (strncmp(p, "==", 2) == 0) {
       fprintf(stderr, "get a ==\n");
