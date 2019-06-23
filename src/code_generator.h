@@ -1,3 +1,5 @@
+#include <linkedList.h>
+
 #include "node.h"           // Node data type
 
 /**
@@ -5,4 +7,4 @@
  */
 
 // generate assembly from a syntax tree
-void gen (Node *node);
+int gen (Node *node, LinkedList *ident_list);

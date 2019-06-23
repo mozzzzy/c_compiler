@@ -25,22 +25,24 @@ int main (int argc, char **argv) {
 
   // create linked list
   fprintf(stderr, "create a linked list\n");
-  LinkedList *linked_list = initLinkedList();
+  LinkedList *token_list = initLinkedList();
   fprintf(stderr, "created successfully\n");
 
   // tokenize
   // NOTE: following function tokenizes user_input,
-  //       and then put each token into the linked_list.
+  //       and then put each token into the token_list.
   fprintf(stderr, "tokenize the geven program\n");
-  tokenize(user_input, linked_list);
+  tokenize(user_input, token_list);
   fprintf(stderr, "tokenized successfully\n");
 
-  // create syntax tree of tokens
+  // create syntax tree of tokens and ident map.
   fprintf(stderr, "create a syntax tree\n");
-  program(linked_list);
+  LinkedList *ident_list = initLinkedList();
+  program(token_list, ident_list);
   fprintf(stderr, "created a syntax tree successfully\n");
 
   fprintf(stderr, "output compiled assembly\n\n");
+
 
   // now write assembly.
   // command to specify the syntax of assembly
@@ -92,7 +94,9 @@ int main (int argc, char **argv) {
   // generate assembly from syntax tree
   int code_count = 0;
   for (code_count = 0; code[code_count]; code_count++) {
-    gen(code[code_count]);
+    if (gen(code[code_count], ident_list) == 1) {
+      error("failed to generate assembly.\n");
+    }
 
     // the result value should be on the top of the stack, so pop
     printf("  pop rax\n");

@@ -1,4 +1,7 @@
 #include <stdio.h>    // printf
+#include <string.h>   // strcmp
+
+#include <linkedList.h>
 
 #include "error_handler.h"
 #include "code_generator.h"
@@ -9,12 +12,28 @@
  * functions
  */
 
-void gen_lval (Node *node) {
+int gen_lval (Node *node, LinkedList *ident_list) {
   if (node->ty != ND_IDENT) {
     error("gen_lval(): node type is not ND_IDENT");
   }
 
-  int offset = ('z' - node->name + 1) * 8;
+  // get index of ident_list
+  int ident_index = -1;
+  int ident_count = 0;
+  for (ident_count = 0; ident_count < ident_list->data_num; ++ident_count) {
+    if (!strcmp(node->name, (char *)getData(ident_list, ident_count))) {
+      ident_index = ident_count;
+      break;
+    }
+  }
+
+  // if ident->name does not exist in ident_list,
+  // return with 1. this means error.
+  if (ident_index == -1) {
+    return 1;
+  }
+
+  int offset = (ident_index + 1) * 8;
   // sets address that is contained in rbp to rax.
   // rbp contains the address that is the top of function frame.
   //   +-----------------------------+
@@ -30,7 +49,7 @@ void gen_lval (Node *node) {
   //   +-----------------------------+
   printf("  mov rax, rbp\n");
   // subtracts offset from rax.
-  // this means to move rax to the address that is calculated by "rbp - offset"
+  // this means that we move rax to the address that is calculated by "rbp - offset"
   //   +-----------------------------+
   //   |  ...                        |
   //   +-----------------------------+
@@ -57,14 +76,19 @@ void gen_lval (Node *node) {
   //   |  ...                        |
   //   +-----------------------------+
   printf("  push rax\n");
+
+  return 0;
 }
 
 // generate assembly from a syntax tree
-void gen (Node *node) {
+int gen (Node *node, LinkedList* ident_list) {
   // if node type is ND_RETURN
   if (node->ty == ND_RETURN) {
     // generate assembly of the expr that is at next of the return
-    gen(node->lhs);
+    if (gen(node->lhs, ident_list) == 1) {
+      return 1;
+    }
+
     // above expr push the result value on the top of the stack.
     // so pop it and save into rax.
     printf("  pop rax\n");
@@ -74,7 +98,7 @@ void gen (Node *node) {
     printf("  pop rbp\n");
     // return
     printf("  ret\n");
-    return;
+    return 0;
   }
 
   // if the node type is ND_NUM
@@ -111,28 +135,34 @@ void gen (Node *node) {
     //   +-----------------------------+
     //
     printf("  push %d\n", node->val);
-    return;
+    return 0;
   }
 
   // if the node type is ND_IDENT
   if (node->ty == ND_IDENT) {
     // push the address of the area which is allocated for the variable.
-    gen_lval(node);
+    if (gen_lval(node, ident_list) == 1) {
+      return 1;
+    }
     // pop the address to rax.
     printf("  pop rax\n");
     // load value from saved address in rax, and save the value into rax
     printf("  mov rax, [rax]\n");
     // push the value saved in rax into stack
     printf("  push rax\n");
-    return;
+    return 0;
   }
 
   // if the node type is '='
   if (node->ty == '=') {
     // push the address of the area which is allocated for the left-hand side variable
-    gen_lval(node->lhs);
+    if (gen_lval(node->lhs, ident_list) == 1) {
+      return 1;
+    }
     // push the value of the right-hand side node
-    gen(node->rhs);
+    if (gen(node->rhs, ident_list) == 1) {
+      return 1;
+    }
 
     // pop the value to rdi
     printf("  pop rdi\n");
@@ -142,15 +172,19 @@ void gen (Node *node) {
     printf("  mov [rax], rdi\n");
     // push the value of rdi
     printf("  push rdi\n");
-    return;
+    return 0;
   }
 
   // NOTE: if the node is not number and identifier and '=', reach following lines.
   //       i.e. +, -, *, /, ==, !=, <, >, <=, >=
 
   // push the value of the left-hand and right-hand side nodes
-  gen(node->lhs);
-  gen(node->rhs);
+  if (gen(node->lhs, ident_list) == 1) {
+    return 1;
+  }
+  if (gen(node->rhs, ident_list) == 1) {
+    return 1;
+  }
 
   // pop value of the right-hand side node to rdi
   printf("  pop rdi\n");
@@ -211,4 +245,5 @@ void gen (Node *node) {
   }
 
   printf("  push rax\n");
+  return 0;
 }

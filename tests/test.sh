@@ -78,4 +78,8 @@ try 15 "a = 10; b = 5; a + b;"
 try 4 "return 4;"
 try 4 "return 4; 1 + 1;"
 try 4 "return 4; return (1 + 1);"
+try 4 "a = 4; return a;"
+# check that 9cc can compile the program that has variable
+# whose name is formed by multi character
+try 10 "var1 = 8; var2 = 2; return var1 + var2;"
 echo ALL OK

@@ -18,6 +18,21 @@ int is_alnum (char c) {
     (c == '_');
 }
 
+size_t get_name_len (char *p) {
+  size_t name_len = 0;
+  while (is_alnum(*p)) {
+    ++name_len;
+    ++p;
+  }
+  return name_len;
+}
+
+char *copy_name (char *p, size_t name_len) {
+  char *name = (char *)malloc(name_len * sizeof(char));
+  strncpy(name, p, name_len);
+  return name;
+}
+
 // tokenize user input and put each token to the array
 void tokenize (char *user_input, LinkedList *linked_list) {
   fprintf(stderr, "tokenize start\n");
@@ -99,10 +114,13 @@ void tokenize (char *user_input, LinkedList *linked_list) {
     // tokenize a token
     if ('a' <= *p && *p <= 'z') {
       fprintf(stderr, "get an identifier \"%c\"\n", *p);
+      size_t name_len = get_name_len(p);
       token->ty = TK_IDENT;
+      token->name = copy_name(p, name_len);
+      printf("### token->name = \"%s\"\n", token->name);
       token->input = p;
       addData(linked_list, token);
-      ++p;
+      p += name_len;
       continue;
     }
 

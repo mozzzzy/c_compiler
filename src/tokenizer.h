@@ -20,6 +20,8 @@ enum {
 typedef struct {
   int ty;       // token type
   int val;      // if ty == TK_NUM, val is token's value
+  char *name;   // it ty == TK_IDENT, name is token's name. this name is formed
+                // by multiple characters.
   char *input;  // token string (for error messaging)
 } Token;
 
