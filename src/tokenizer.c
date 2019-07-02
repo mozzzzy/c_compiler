@@ -117,7 +117,6 @@ void tokenize (char *user_input, LinkedList *linked_list) {
       size_t name_len = get_name_len(p);
       token->ty = TK_IDENT;
       token->name = copy_name(p, name_len);
-      printf("### token->name = \"%s\"\n", token->name);
       token->input = p;
       addData(linked_list, token);
       p += name_len;
